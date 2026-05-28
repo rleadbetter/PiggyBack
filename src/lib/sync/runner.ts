@@ -26,6 +26,7 @@ import { createServiceRoleClient } from "@/utils/supabase/service-role";
 import { getPlaintextToken } from "@/lib/token-encryption";
 import { inferCategoryId, ensureInferredCategories } from "@/lib/infer-category";
 import { validateUpApiUrl } from "@/lib/up-api";
+import type { AccountTypeEnum } from "@/lib/up-types";
 import {
   startSyncRun,
   recordAccountAttempt,
@@ -210,7 +211,7 @@ export async function runSyncForUser(
       id: string;
       attributes: {
         displayName: string;
-        accountType: string;
+        accountType: AccountTypeEnum;
         ownershipType: string;
         balance: { valueInBaseUnits: number; currencyCode: string };
       };
@@ -441,6 +442,7 @@ export async function runSyncForUser(
             transactionType: txn.attributes.transactionType || null,
             description: txn.attributes.description,
             amountCents: txn.attributes.amount.valueInBaseUnits,
+            accountType: account.attributes.accountType,
           });
           let finalParentCategoryId =
             txn.relationships.parentCategory.data?.id || null;

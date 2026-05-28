@@ -17,7 +17,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { inferCategoryId } from "./infer-category";
-import type { UpTransaction } from "./up-types";
+import type { AccountTypeEnum, UpTransaction } from "./up-types";
 import {
   findDefaultRuleForDescription,
   loadMerchantDefaultRules,
@@ -59,7 +59,8 @@ export interface BatchResolverContext {
 export function resolveCategoryBatch(
   txn: UpTransaction,
   ctx: BatchResolverContext,
-  existingTxnId: string | null
+  existingTxnId: string | null,
+  accountType: AccountTypeEnum
 ): CategoryResolution {
   // Tier 1: user override (highest priority)
   if (existingTxnId) {
@@ -123,6 +124,7 @@ export function resolveCategoryBatch(
     transactionType: txn.attributes.transactionType,
     description: txn.attributes.description,
     amountCents: txn.attributes.amount.valueInBaseUnits,
+    accountType,
   });
 
   return {
@@ -150,6 +152,9 @@ export async function resolveCategorySingle(
     transferAccountId: string | null;
     /** Existing PiggyBack transactions.id for this Up transaction, if it's a re-sync. */
     existingTxnId: string | null;
+    /** Source account's type. Drives HOME_LOAN-aware inference
+     *  (Drawdown → external-transfer, Interest charged → housing). */
+    accountType: AccountTypeEnum;
   }
 ): Promise<CategoryResolution> {
   // Tier 1: user override (highest priority)
@@ -220,6 +225,7 @@ export async function resolveCategorySingle(
     transactionType: txn.attributes.transactionType,
     description: txn.attributes.description,
     amountCents: txn.attributes.amount.valueInBaseUnits,
+    accountType: ctx.accountType,
   });
 
   return {
