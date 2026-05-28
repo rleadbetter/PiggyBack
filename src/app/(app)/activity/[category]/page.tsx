@@ -59,7 +59,7 @@ export default async function CategoryBudgetPage({
   const accountIds = accounts?.map(a => a.id) || [];
 
   // Categories that represent transfers between accounts - skip transfer_account_id filter for these
-  const TRANSFER_CATEGORY_IDS = ['internal-transfer'];
+  const TRANSFER_CATEGORY_IDS = ['internal-transfer', 'external-transfer', 'round-up'];
   const includesTransfers = upCategoryIds.some(id => TRANSFER_CATEGORY_IDS.includes(id));
 
   // Fetch ALL transactions for this category (for accurate stats)
@@ -86,6 +86,10 @@ export default async function CategoryBudgetPage({
     if (allMappedIds.length > 0) {
       query = query.or(`category_id.is.null,category_id.not.in.(${allMappedIds.join(',')})`);
     }
+    // Inferred categories (internal-transfer, external-transfer, round-up) live
+    // in `categories` but not in `category_mappings`, so they'd slip through
+    // the "unmapped" branch above. Explicitly exclude them from Miscellaneous.
+    query = query.not("category_id", "in", "(internal-transfer,round-up,external-transfer)");
   } else {
     query = query.in("category_id", upCategoryIds);
   }

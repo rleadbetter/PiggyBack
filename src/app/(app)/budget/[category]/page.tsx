@@ -56,7 +56,7 @@ export default async function CategoryBudgetPage({
   const accountIds = accounts?.map(a => a.id) || [];
 
   // Categories that represent transfers between accounts - skip transfer_account_id filter for these
-  const TRANSFER_CATEGORY_IDS = ['internal-transfer'];
+  const TRANSFER_CATEGORY_IDS = ['internal-transfer', 'external-transfer', 'round-up'];
   const includesTransfers = upCategoryIds.some(id => TRANSFER_CATEGORY_IDS.includes(id));
 
   // Fetch ALL transactions for this category (for accurate stats)
