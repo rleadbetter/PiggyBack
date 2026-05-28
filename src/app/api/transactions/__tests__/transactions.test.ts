@@ -24,6 +24,7 @@ function buildMockSupabase() {
     lte: vi.fn(() => chainable),
     lt: vi.fn(() => chainable),
     is: vi.fn(() => chainable),
+    not: vi.fn(() => chainable),
     or: vi.fn(() => chainable),
     order: vi.fn(() => chainable),
     range: vi.fn(() => ({
@@ -168,6 +169,7 @@ describe('transactions route', () => {
           isSpy(...args);
           return chainable;
         },
+        not: vi.fn(() => chainable),
         or: vi.fn(() => chainable),
         order: vi.fn(() => chainable),
         limit: limitSpy,

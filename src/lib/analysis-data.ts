@@ -90,7 +90,10 @@ export async function getAnalysisData(
 
   // Fetch ALL data in parallel — paginated transactions + metadata concurrently
   const [allTransactions, incomeTransactions, { data: categoryMappingsRaw }, { data: incomeSources }, { data: netWorthSnapshots }] = await Promise.all([
-    // Spending transactions (paginated)
+    // Spending transactions (paginated). Excludes both account-level transfers
+    // (transfer_account_id) and category-level transfers (internal-transfer,
+    // round-up, external-transfer — including HOME_LOAN drawdowns which the
+    // inferrer reclassifies as external-transfer).
     (async () => {
       const results: AnalysisTransaction[] = [];
       let offset = 0;
@@ -103,6 +106,7 @@ export async function getAnalysisData(
           .lte("settled_at", dateTo)
           .lt("amount_cents", 0)
           .is("transfer_account_id", null)
+          .not("category_id", "in", "(internal-transfer,round-up,external-transfer)")
           .order("settled_at", { ascending: false })
           .range(offset, offset + BATCH - 1);
         if (!data || data.length === 0) break;
@@ -112,7 +116,7 @@ export async function getAnalysisData(
       }
       return results;
     })(),
-    // Income transactions (paginated)
+    // Income transactions (paginated). Same category exclusion as spending.
     (async () => {
       const results: AnalysisIncomeTransaction[] = [];
       let offset = 0;
@@ -125,6 +129,7 @@ export async function getAnalysisData(
           .lte("settled_at", dateTo)
           .gt("amount_cents", 0)
           .is("transfer_account_id", null)
+          .not("category_id", "in", "(internal-transfer,round-up,external-transfer)")
           .order("settled_at", { ascending: false })
           .range(offset, offset + BATCH - 1);
         if (!data || data.length === 0) break;

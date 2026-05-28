@@ -83,6 +83,7 @@ export async function GET(request: Request) {
         .in("account_id", accountIds)
         .is("category_id", null)
         .is("transfer_account_id", null)
+        .not("category_id", "in", "(internal-transfer,round-up,external-transfer)")
         .is("deleted_at", null)
         .order("settled_at", { ascending: false });
 
@@ -115,6 +116,7 @@ export async function GET(request: Request) {
         .in("account_id", accountIds)
         .in("category_id", upCategoryIds)
         .is("transfer_account_id", null)
+        .not("category_id", "in", "(internal-transfer,round-up,external-transfer)")
         .is("deleted_at", null)
         .order("settled_at", { ascending: false });
 
@@ -160,6 +162,7 @@ export async function GET(request: Request) {
         .in("account_id", accountIds)
         .in("category_id", upCategoryIds)
         .is("transfer_account_id", null)
+        .not("category_id", "in", "(internal-transfer,round-up,external-transfer)")
         .is("deleted_at", null)
         .order("settled_at", { ascending: false });
 

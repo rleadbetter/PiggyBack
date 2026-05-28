@@ -129,7 +129,10 @@ export async function matchExpenseToTransactions(
       .select('id, description, amount_cents, created_at, settled_at')
       .in('account_id', accountIds)
       .lt('amount_cents', 0) // Only expenses
-      .is('transfer_account_id', null) // Exclude transfers
+      .is('transfer_account_id', null) // Exclude account-level transfers
+      // Exclude inferred-transfer categories so HOME_LOAN drawdowns and
+      // similar reclassified rows aren't matched as recurring expenses.
+      .not('category_id', 'in', '(internal-transfer,round-up,external-transfer)')
       .order('created_at', { ascending: false });
 
     // Apply date limit if specified

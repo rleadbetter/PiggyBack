@@ -265,6 +265,7 @@ export function createFinancialTools(
           .is("deleted_at", null)
           .lt("amount_cents", 0)
           .is("transfer_account_id", null)
+          .not("category_id", "in", "(internal-transfer,round-up,external-transfer)")
           .gte("settled_at", startDate)
           .lte("settled_at", endDateStr);
 
@@ -701,6 +702,7 @@ export function createFinancialTools(
             .is("deleted_at", null)
             .lt("amount_cents", 0)
             .is("transfer_account_id", null)
+            .not("category_id", "in", "(internal-transfer,round-up,external-transfer)")
             .gte("settled_at", startDate)
             .lte("settled_at", endDateStr);
 
@@ -784,7 +786,8 @@ export function createFinancialTools(
           .in("account_id", accountIds)
           .is("deleted_at", null)
           .lt("amount_cents", 0)
-          .is("transfer_account_id", null);
+          .is("transfer_account_id", null)
+          .not("category_id", "in", "(internal-transfer,round-up,external-transfer)");
 
         if (month) {
           const startDate = `${month}-01`;
@@ -2006,6 +2009,7 @@ IMPORTANT: For date ordering on transactions, use 'settled_at' or 'created_at' â
           .is("deleted_at", null)
           .lt("amount_cents", 0)
           .is("transfer_account_id", null)
+          .not("category_id", "in", "(internal-transfer,round-up,external-transfer)")
           .gte("settled_at", startDate)
           .lte("settled_at", endDateStr);
 
@@ -2105,6 +2109,7 @@ IMPORTANT: For date ordering on transactions, use 'settled_at' or 'created_at' â
           .is("deleted_at", null)
           .lt("amount_cents", 0)
           .is("transfer_account_id", null)
+          .not("category_id", "in", "(internal-transfer,round-up,external-transfer)")
           .gte("settled_at", startDate.toISOString())
           .order("created_at", { ascending: true });
 
@@ -3410,6 +3415,7 @@ IMPORTANT: For date ordering on transactions, use 'settled_at' or 'created_at' â
             .in("account_id", accountIds)
             .is("deleted_at", null)
             .is("transfer_account_id", null)
+            .not("category_id", "in", "(internal-transfer,round-up,external-transfer)")
             .gte("settled_at", startDate.toISOString()),
           supabase
             .from("category_mappings")
@@ -4023,6 +4029,7 @@ IMPORTANT: For date ordering on transactions, use 'settled_at' or 'created_at' â
             .in("account_id", accountIds.length > 0 ? accountIds : ["__none__"])
             .is("deleted_at", null)
             .is("transfer_account_id", null)
+            .not("category_id", "in", "(internal-transfer,round-up,external-transfer)")
             .gte("created_at", twelveMonthsAgo.toISOString())
             .lte("created_at", endOfMonth.toISOString()),
           supabase

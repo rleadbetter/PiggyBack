@@ -114,6 +114,7 @@ export default async function PlanPage() {
       )
       .in("account_id", accountIds.length > 0 ? accountIds : ["__none__"])
       .is("transfer_account_id", null)
+      .not("category_id", "in", "(internal-transfer,round-up,external-transfer)")
       .gte("created_at", twelveMonthsAgo.toISOString())
       .lte("created_at", endOfMonth.toISOString()),
     supabase

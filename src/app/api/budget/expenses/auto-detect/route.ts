@@ -87,6 +87,7 @@ export async function GET(request: Request) {
     .in("account_id", accountIds)
     .lt("amount_cents", 0) // Only expenses
     .is("transfer_account_id", null)
+    .not("category_id", "in", "(internal-transfer,round-up,external-transfer)")
     .gte("created_at", sixMonthsAgo.toISOString())
     .order("created_at", { ascending: false })
     .limit(2000);

@@ -64,6 +64,7 @@ export async function POST(request: NextRequest) {
     )
     .in("account_id", accountIds)
     .is("transfer_account_id", null)
+    .not("category_id", "in", "(internal-transfer,round-up,external-transfer)")
     .order("created_at", { ascending: false })
     .limit(10000);
 
