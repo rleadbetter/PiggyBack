@@ -25,17 +25,21 @@ import { FunnelEvent } from "@/lib/analytics/events";
 
 // Use environment variable for the app URL, fallback for development
 const getWebhookBaseUrl = () => {
-  // In production, use the configured app URL
+  // Explicit override. Used when the webhook URL must differ from the app
+  // URL — for example a self-host where the app lives on a LAN-only
+  // hostname but the webhook needs a public hostname so Up Bank can reach
+  // it. Takes priority because, if set, the operator has expressed an
+  // explicit intent.
+  if (process.env.WEBHOOK_BASE_URL) {
+    return process.env.WEBHOOK_BASE_URL;
+  }
+  // Normal Vercel / public-app case: the app URL is also the webhook URL.
   if (process.env.NEXT_PUBLIC_APP_URL) {
     return process.env.NEXT_PUBLIC_APP_URL;
   }
   // Vercel automatically sets VERCEL_URL for preview deployments
   if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}`;
-  }
-  // For local development with ngrok or similar tunnel
-  if (process.env.WEBHOOK_BASE_URL) {
-    return process.env.WEBHOOK_BASE_URL;
   }
   // Default for local development
   return "http://localhost:3000";
