@@ -23,6 +23,7 @@ import { createServiceRoleClient } from "@/utils/supabase/service-role";
 import { getPlaintextToken } from "@/lib/token-encryption";
 import { createUpApiClient, type UpApiClient } from "@/lib/up-api";
 import { UpUnauthorizedError } from "@/lib/up-errors";
+import { auditLog, AuditAction } from "@/lib/audit-logger";
 
 /** Category IDs PiggyBack invents that don't exist in Up's taxonomy. */
 const PIGGYBACK_ONLY_CATEGORY_IDS = new Set<string>([
@@ -35,6 +36,14 @@ const PIGGYBACK_ONLY_CATEGORY_IDS = new Set<string>([
 ]);
 
 const CONCURRENCY = 5;
+/**
+ * Defensive scrubber for bearer tokens that may have folded into thrown
+ * error messages. The current `up-api.ts` request layer does NOT include the
+ * bearer in any error it constructs (UpClientError/UpServerError messages
+ * come from the API's own JSON:API error payload), so this regex is
+ * belt-and-braces against future refactors. Up Bank PATs contain colons
+ * (`up:yeah:...`); `\S+` is intentional to cover that format.
+ */
 const BEARER_TOKEN_REGEX = /Bearer\s+\S+/g;
 
 export interface PushItem {
@@ -163,8 +172,15 @@ async function processItem({
       if (!state.tokenRevoked) {
         state.tokenRevoked = true;
         await markTokenRevoked(supabase, userId);
+        // Route through auditLog so the revocation event has the same
+        // shape as other critical operations and is ready for an
+        // audit_logs table migration.
+        auditLog({
+          userId,
+          action: AuditAction.UP_TOKEN_REVOKED,
+          details: { reason: "up_401_during_category_sync" },
+        });
       }
-      logSyncError({ stage: "401", userId, upTransactionId, err });
       return;
     }
     logSyncError({ stage: "push", userId, upTransactionId, err });
@@ -216,8 +232,12 @@ interface SyncLog {
 }
 
 function logSyncError(entry: SyncLog): void {
+  // Shape mirrors auditLog() so a future audit_logs table migration can
+  // ingest both without divergent parsers.
   console.log(
     JSON.stringify({
+      level: "error" as const,
+      timestamp: new Date().toISOString(),
       source: "sync-category-to-up",
       stage: entry.stage,
       userId: entry.userId,

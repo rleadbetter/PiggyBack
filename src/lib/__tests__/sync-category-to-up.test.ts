@@ -200,9 +200,9 @@ describe("pushCategoriesToUp", () => {
     expect((init.headers as Record<string, string>).Authorization).toMatch(/^Bearer up:yeah:/);
   });
 
-  it("T8: 401 → mark token revoked once, no throw, future items short-circuit", async () => {
-    // Return 401 for the first call; subsequent calls should not happen due
-    // to short-circuit, but if they did, also 401.
+  it("T8: 401 → mark token revoked once, audit-log event emitted, no throw", async () => {
+    // Return 401 for every call; the short-circuit means only the first item
+    // will trigger the UPDATE/auditLog pair.
     (global.fetch as any).mockResolvedValue({
       ok: false,
       status: 401,
@@ -215,6 +215,8 @@ describe("pushCategoriesToUp", () => {
     });
     const { createServiceRoleClient } = await import("@/utils/supabase/service-role");
     (createServiceRoleClient as any).mockReturnValue(supabase);
+    // Capture audit-log JSON lines from console.log.
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     const { pushCategoriesToUp } = await import("@/lib/sync-category-to-up");
     const result = await pushCategoriesToUp(USER, [
       { upTransactionId: "txn-1", categoryId: VALID_CAT },
@@ -227,6 +229,25 @@ describe("pushCategoriesToUp", () => {
     expect(updates).toHaveLength(1);
     expect(updates[0].values).toEqual({ is_active: false });
     expect(updates[0].eq).toEqual(["user_id", USER]);
+    // Exactly one auditLog UP_TOKEN_REVOKED line — shape mirrors auditLog().
+    const auditLines = logSpy.mock.calls
+      .map((c) => {
+        try {
+          return JSON.parse(c[0] as string);
+        } catch {
+          return null;
+        }
+      })
+      .filter((e): e is Record<string, unknown> => !!e && e.action === "UP_TOKEN_REVOKED");
+    expect(auditLines).toHaveLength(1);
+    expect(auditLines[0]).toMatchObject({
+      level: "audit",
+      userId: USER,
+      action: "UP_TOKEN_REVOKED",
+      details: { reason: "up_401_during_category_sync" },
+    });
+    expect(typeof auditLines[0].timestamp).toBe("string");
+    logSpy.mockRestore();
   });
 
   it("T9: bounded concurrency of 5 across 20 items, all complete", async () => {
