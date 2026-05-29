@@ -34,7 +34,7 @@ async function getAllTransactions(
       .select("amount_cents, is_income")
       .in("account_id", accountIds)
       .is("transfer_account_id", null)
-      .not("category_id", "in", "(internal-transfer,round-up,external-transfer)")
+      .or("category_id.is.null,category_id.not.in.(internal-transfer,round-up,external-transfer)")
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .range(offset, offset + currentBatchSize - 1);
@@ -131,7 +131,7 @@ export default async function ActivityPage({
     `)
     .in("account_id", accountIds)
     .is("transfer_account_id", null) // Exclude transfers by default
-    .not("category_id", "in", "(internal-transfer,round-up,external-transfer)")
+    .or("category_id.is.null,category_id.not.in.(internal-transfer,round-up,external-transfer)")
     .is("deleted_at", null) // Exclude soft-deleted (TRANSACTION_DELETED) txns
     .order("created_at", { ascending: false })
     .range(0, 499); // Fetch first 500 for display
@@ -221,7 +221,7 @@ export default async function ActivityPage({
     .select("*", { count: "exact", head: true })
     .in("account_id", accountIds)
     .is("transfer_account_id", null)
-    .not("category_id", "in", "(internal-transfer,round-up,external-transfer)")
+    .or("category_id.is.null,category_id.not.in.(internal-transfer,round-up,external-transfer)")
     .is("deleted_at", null);
 
   return (

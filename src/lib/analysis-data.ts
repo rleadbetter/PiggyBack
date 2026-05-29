@@ -106,7 +106,7 @@ export async function getAnalysisData(
           .lte("settled_at", dateTo)
           .lt("amount_cents", 0)
           .is("transfer_account_id", null)
-          .not("category_id", "in", "(internal-transfer,round-up,external-transfer)")
+          .or("category_id.is.null,category_id.not.in.(internal-transfer,round-up,external-transfer)")
           .order("settled_at", { ascending: false })
           .range(offset, offset + BATCH - 1);
         if (!data || data.length === 0) break;
@@ -129,7 +129,7 @@ export async function getAnalysisData(
           .lte("settled_at", dateTo)
           .gt("amount_cents", 0)
           .is("transfer_account_id", null)
-          .not("category_id", "in", "(internal-transfer,round-up,external-transfer)")
+          .or("category_id.is.null,category_id.not.in.(internal-transfer,round-up,external-transfer)")
           .order("settled_at", { ascending: false })
           .range(offset, offset + BATCH - 1);
         if (!data || data.length === 0) break;

@@ -102,13 +102,13 @@ export default async function DashboardPage() {
     { data: allIncomeSources },
     { data: fullSplitSettings },
   ] = await Promise.all([
-    supabase.from("transactions").select("amount_cents, category_id, is_income, created_at").in("account_id", accountIds).is("transfer_account_id", null).not("category_id", "in", "(internal-transfer,round-up,external-transfer)").gte("created_at", startOfMonth.toISOString()).lte("created_at", endOfMonth.toISOString()),
-    supabase.from("transactions").select("id, description, amount_cents, created_at, category_id, is_income").in("account_id", accountIds).is("transfer_account_id", null).not("category_id", "in", "(internal-transfer,round-up,external-transfer)").order("created_at", { ascending: false }).limit(5),
+    supabase.from("transactions").select("amount_cents, category_id, is_income, created_at").in("account_id", accountIds).is("transfer_account_id", null).or("category_id.is.null,category_id.not.in.(internal-transfer,round-up,external-transfer)").gte("created_at", startOfMonth.toISOString()).lte("created_at", endOfMonth.toISOString()),
+    supabase.from("transactions").select("id, description, amount_cents, created_at, category_id, is_income").in("account_id", accountIds).is("transfer_account_id", null).or("category_id.is.null,category_id.not.in.(internal-transfer,round-up,external-transfer)").order("created_at", { ascending: false }).limit(5),
     supabase.from("expense_definitions").select("id, name, emoji, expected_amount_cents, next_due_date, recurrence_type, expense_matches!left(id, for_period, matched_at, transaction_id, transactions(amount_cents, settled_at, created_at))").eq("partnership_id", partnershipId).eq("is_active", true).order("next_due_date"),
     supabase.from("savings_goals").select("id, name, icon, color, current_amount_cents, target_amount_cents, deadline").eq("partnership_id", partnershipId).eq("is_completed", false).order("created_at", { ascending: false }).limit(3),
     supabase.from("net_worth_snapshots").select("snapshot_date, total_balance_cents, investment_total_cents").eq("partnership_id", partnershipId).order("snapshot_date", { ascending: true }).limit(12),
     supabase.from("income_sources").select("id, next_pay_date, amount_cents, frequency").eq("user_id", user.id).eq("is_active", true).eq("source_type", "recurring-salary").eq("is_manual_partner_income", false),
-    supabase.from("transactions").select("description, amount_cents, created_at, category_id, parent_category_id, is_income, is_internal_transfer").in("account_id", accountIds).is("transfer_account_id", null).not("category_id", "in", "(internal-transfer,round-up,external-transfer)").gte("created_at", sixMonthsAgo.toISOString()).lte("created_at", endOfMonth.toISOString()).order("created_at", { ascending: false }).limit(1000),
+    supabase.from("transactions").select("description, amount_cents, created_at, category_id, parent_category_id, is_income, is_internal_transfer").in("account_id", accountIds).is("transfer_account_id", null).or("category_id.is.null,category_id.not.in.(internal-transfer,round-up,external-transfer)").gte("created_at", sixMonthsAgo.toISOString()).lte("created_at", endOfMonth.toISOString()).order("created_at", { ascending: false }).limit(1000),
     supabase.from("expense_definitions").select("id, name, match_pattern, merchant_name, category_name, expected_amount_cents, recurrence_type").eq("partnership_id", partnershipId).eq("is_active", true),
     supabase.from("couple_split_settings").select("expense_definition_id, owner_percentage").eq("partnership_id", partnershipId),
     // ── 2Up split analysis inputs ──────────────────────────────────────
@@ -119,7 +119,7 @@ export default async function DashboardPage() {
           .in("account_id", jointAccountIds)
           .lt("amount_cents", 0)
           .is("transfer_account_id", null)
-          .not("category_id", "in", "(internal-transfer,round-up,external-transfer)")
+          .or("category_id.is.null,category_id.not.in.(internal-transfer,round-up,external-transfer)")
           .neq("status", "DELETED")
           .gte("settled_at", startOfMonth.toISOString())
           .lte("settled_at", endOfMonth.toISOString())

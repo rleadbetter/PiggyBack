@@ -56,7 +56,7 @@ export async function GET() {
           .select("description, amount_cents, category_id, is_income, created_at")
           .in("account_id", accountIds)
           .is("transfer_account_id", null)
-          .not("category_id", "in", "(internal-transfer,round-up,external-transfer)")
+          .or("category_id.is.null,category_id.not.in.(internal-transfer,round-up,external-transfer)")
           .gte("created_at", startOfMonth.toISOString())
           .lte("created_at", endOfMonth.toISOString())
           .limit(500) as unknown as Promise<{ data: TxnRow[] | null; error: any }>
@@ -67,7 +67,7 @@ export async function GET() {
           .select("amount_cents, category_id, is_income")
           .in("account_id", accountIds)
           .is("transfer_account_id", null)
-          .not("category_id", "in", "(internal-transfer,round-up,external-transfer)")
+          .or("category_id.is.null,category_id.not.in.(internal-transfer,round-up,external-transfer)")
           .gte("created_at", startOfLastMonth.toISOString())
           .lte("created_at", endOfLastMonth.toISOString())
           .limit(500) as unknown as Promise<{ data: TxnSummaryRow[] | null; error: any }>

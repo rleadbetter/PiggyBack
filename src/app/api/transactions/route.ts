@@ -229,7 +229,7 @@ export async function GET(request: NextRequest) {
     query = query.is("transfer_account_id", null);
     // Also exclude inferred-transfer categories so HOME_LOAN drawdowns and
     // similar reclassified rows don't show up as spending here.
-    query = query.not("category_id", "in", "(internal-transfer,round-up,external-transfer)");
+    query = query.or("category_id.is.null,category_id.not.in.(internal-transfer,round-up,external-transfer)");
   }
 
   // Note: Round-ups are not separate transactions in UP Bank
@@ -364,7 +364,7 @@ export async function GET(request: NextRequest) {
 
     if (!includeTransfers) {
       query = query.is("transfer_account_id", null);
-      query = query.not("category_id", "in", "(internal-transfer,round-up,external-transfer)");
+      query = query.or("category_id.is.null,category_id.not.in.(internal-transfer,round-up,external-transfer)");
     }
 
     return query;

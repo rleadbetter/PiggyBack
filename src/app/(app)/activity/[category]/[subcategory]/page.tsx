@@ -105,7 +105,7 @@ export default async function SubcategoryBudgetPage({
     }
     // Inferred categories live in `categories` but not in `category_mappings`,
     // so they'd slip through the "unmapped" branch above. Explicitly exclude.
-    query = query.not("category_id", "in", "(internal-transfer,round-up,external-transfer)");
+    query = query.or("category_id.is.null,category_id.not.in.(internal-transfer,round-up,external-transfer)");
   } else {
     query = query.eq("category_id", subcategoryMapping!.upCategoryId);
   }

@@ -132,7 +132,7 @@ export async function matchExpenseToTransactions(
       .is('transfer_account_id', null) // Exclude account-level transfers
       // Exclude inferred-transfer categories so HOME_LOAN drawdowns and
       // similar reclassified rows aren't matched as recurring expenses.
-      .not('category_id', 'in', '(internal-transfer,round-up,external-transfer)')
+      .or('category_id.is.null,category_id.not.in.(internal-transfer,round-up,external-transfer)')
       .order('created_at', { ascending: false });
 
     // Apply date limit if specified
