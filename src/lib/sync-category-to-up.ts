@@ -49,6 +49,13 @@ const BEARER_TOKEN_REGEX = /Bearer\s+\S+/g;
 export interface PushItem {
   upTransactionId: string | null;
   categoryId: string | null;
+  /**
+   * Mirrors `transactions.is_categorizable` (default true). System-generated
+   * Up transactions (Withholding Tax, Interest, Round Up, etc.) are flagged
+   * by Up's API as not categorisable and return 403 on category PATCH. Skip
+   * them before the request to avoid wasted API calls and noisy error logs.
+   */
+  isCategorizable?: boolean | null;
 }
 
 export interface PushResult {
@@ -160,7 +167,8 @@ async function processItem({
   if (state.tokenRevoked) {
     return;
   }
-  const { upTransactionId, categoryId } = item;
+  const { upTransactionId, categoryId, isCategorizable } = item;
+  if (isCategorizable === false) return;
   if (!categoryId || !upTransactionId) return;
   if (PIGGYBACK_ONLY_CATEGORY_IDS.has(categoryId)) return;
   if (!validUpCategoryIds.has(categoryId)) return;

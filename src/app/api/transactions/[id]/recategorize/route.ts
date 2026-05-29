@@ -78,7 +78,8 @@ export async function PATCH(
         parent_category_id,
         account_id,
         description,
-        up_transaction_id
+        up_transaction_id,
+        is_categorizable
       `)
       .eq("id", transactionId)
       .maybeSingle();
@@ -176,7 +177,10 @@ export async function PATCH(
     let bulkUpdatedCount = 0;
     let merchantRuleCreated = false;
     // Hoisted so step 4.5 can push these to Up Bank after the local writes.
-    let bulkMerchantTxns: Array<{ up_transaction_id: string | null }> = [];
+    let bulkMerchantTxns: Array<{
+      up_transaction_id: string | null;
+      is_categorizable: boolean | null;
+    }> = [];
 
     if (apply_to_merchant && category_id && transaction.description) {
       // a) Upsert merchant rule. share_with_everyone is opt-in; the
@@ -213,7 +217,7 @@ export async function PATCH(
         // c) Find other transactions from this merchant
         const { data: merchantTxns } = await supabase
           .from("transactions")
-          .select("id, category_id, parent_category_id, up_transaction_id")
+          .select("id, category_id, parent_category_id, up_transaction_id, is_categorizable")
           .in("account_id", accountIds)
           .eq("description", transaction.description)
           .neq("id", transactionId);
@@ -221,7 +225,10 @@ export async function PATCH(
         if (merchantTxns && merchantTxns.length > 0) {
           const txnIds = merchantTxns.map((t: any) => t.id);
           bulkUpdatedCount = txnIds.length;
-          bulkMerchantTxns = merchantTxns.map((t: any) => ({ up_transaction_id: t.up_transaction_id }));
+          bulkMerchantTxns = merchantTxns.map((t: any) => ({
+            up_transaction_id: t.up_transaction_id,
+            is_categorizable: t.is_categorizable,
+          }));
 
           // d) Bulk update all matching transactions
           await supabase
@@ -288,12 +295,24 @@ export async function PATCH(
     // No-op when the flag is off. Errors are logged inside the helper and
     // never propagate to this response — Up may be unavailable but the local
     // change has already succeeded above.
-    const upSyncItems: Array<{ upTransactionId: string | null; categoryId: string | null }> = [
-      { upTransactionId: transaction.up_transaction_id, categoryId: category_id },
+    const upSyncItems: Array<{
+      upTransactionId: string | null;
+      categoryId: string | null;
+      isCategorizable?: boolean | null;
+    }> = [
+      {
+        upTransactionId: transaction.up_transaction_id,
+        categoryId: category_id,
+        isCategorizable: transaction.is_categorizable,
+      },
     ];
     if (apply_to_merchant && category_id && bulkMerchantTxns.length > 0) {
       for (const t of bulkMerchantTxns) {
-        upSyncItems.push({ upTransactionId: t.up_transaction_id, categoryId: category_id });
+        upSyncItems.push({
+          upTransactionId: t.up_transaction_id,
+          categoryId: category_id,
+          isCategorizable: t.is_categorizable,
+        });
       }
     }
     await pushCategoriesToUp(user.id, upSyncItems);

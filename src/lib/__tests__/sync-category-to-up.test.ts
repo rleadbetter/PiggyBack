@@ -142,6 +142,18 @@ describe("pushCategoriesToUp", () => {
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
+  it("T4b: isCategorizable=false → skipped, no fetch (Up returns 403 for Withholding Tax / Interest / Round Up)", async () => {
+    const { createServiceRoleClient } = await import("@/utils/supabase/service-role");
+    (createServiceRoleClient as any).mockReturnValue(
+      createMockSupabase({ up_api_configs: ACTIVE_CONFIG, category_mappings: VALID_MAPPING_RESULT }),
+    );
+    const { pushCategoriesToUp } = await import("@/lib/sync-category-to-up");
+    await pushCategoriesToUp(USER, [
+      { upTransactionId: "txn-tax-1", categoryId: VALID_CAT, isCategorizable: false },
+    ]);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
   it("T5: upTransactionId null → skipped, no fetch", async () => {
     const { createServiceRoleClient } = await import("@/utils/supabase/service-role");
     (createServiceRoleClient as any).mockReturnValue(

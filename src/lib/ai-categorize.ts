@@ -59,10 +59,11 @@ export async function aiCategorizeTransaction({
   // Either path below (cache hit or AI hit) may need it.
   const { data: thisTxn } = await supabase
     .from("transactions")
-    .select("up_transaction_id")
+    .select("up_transaction_id, is_categorizable")
     .eq("id", transactionId)
     .maybeSingle();
   const upTransactionId: string | null = thisTxn?.up_transaction_id ?? null;
+  const isCategorizable: boolean | null = thisTxn?.is_categorizable ?? null;
 
   // H13 fix: Verify that all provided accountIds actually belong to this user
   // before using them in a service-role query. This prevents account ID injection.
@@ -107,7 +108,7 @@ export async function aiCategorizeTransaction({
       .update({ category_id: cached.category_id })
       .eq("id", transactionId);
     await pushCategoriesToUp(userId, [
-      { upTransactionId, categoryId: cached.category_id },
+      { upTransactionId, categoryId: cached.category_id, isCategorizable },
     ]);
     return { source: "cache" as const, categoryId: cached.category_id };
   }
@@ -201,7 +202,7 @@ Pick the single best category_id and your confidence (0-1). If unsure, use a low
     .update({ category_id })
     .eq("id", transactionId);
 
-  await pushCategoriesToUp(userId, [{ upTransactionId, categoryId: category_id }]);
+  await pushCategoriesToUp(userId, [{ upTransactionId, categoryId: category_id, isCategorizable }]);
 
   return { source: "ai" as const, categoryId: category_id, confidence };
 }
