@@ -3,11 +3,16 @@ import { NextResponse } from "next/server";
 import { z } from "zod/v4";
 import { parseBody, validateUuidParam } from "@/lib/validation";
 import { generalApiLimiter } from "@/lib/rate-limiter";
+import { pushCategoriesToUp } from "@/lib/sync-category-to-up";
 
 /**
  * PATCH /api/transactions/[id]/recategorize
  *
- * Recategorize a transaction locally (LOCAL ONLY - does NOT sync to UP Bank API)
+ * Recategorize a transaction locally. When the env flag SYNC_CATEGORIES_TO_UP=true
+ * is set, the new category is also pushed back to Up Bank via PATCH
+ * /transactions/{id}/relationships/category so the Up phone app reflects the
+ * change. Default off; failure is logged and never propagated to the response.
+ *
  * Optionally applies a merchant rule to all past + future transactions from that merchant.
  *
  * Request Body:
@@ -72,7 +77,8 @@ export async function PATCH(
         category_id,
         parent_category_id,
         account_id,
-        description
+        description,
+        up_transaction_id
       `)
       .eq("id", transactionId)
       .maybeSingle();
@@ -169,6 +175,8 @@ export async function PATCH(
     // 4. Merchant rule + bulk update (if requested)
     let bulkUpdatedCount = 0;
     let merchantRuleCreated = false;
+    // Hoisted so step 4.5 can push these to Up Bank after the local writes.
+    let bulkMerchantTxns: Array<{ up_transaction_id: string | null }> = [];
 
     if (apply_to_merchant && category_id && transaction.description) {
       // a) Upsert merchant rule. share_with_everyone is opt-in; the
@@ -205,7 +213,7 @@ export async function PATCH(
         // c) Find other transactions from this merchant
         const { data: merchantTxns } = await supabase
           .from("transactions")
-          .select("id, category_id, parent_category_id")
+          .select("id, category_id, parent_category_id, up_transaction_id")
           .in("account_id", accountIds)
           .eq("description", transaction.description)
           .neq("id", transactionId);
@@ -213,6 +221,7 @@ export async function PATCH(
         if (merchantTxns && merchantTxns.length > 0) {
           const txnIds = merchantTxns.map((t: any) => t.id);
           bulkUpdatedCount = txnIds.length;
+          bulkMerchantTxns = merchantTxns.map((t: any) => ({ up_transaction_id: t.up_transaction_id }));
 
           // d) Bulk update all matching transactions
           await supabase
@@ -274,6 +283,20 @@ export async function PATCH(
         }
       }
     }
+
+    // 4.5 Push category change(s) to Up Bank if SYNC_CATEGORIES_TO_UP=true.
+    // No-op when the flag is off. Errors are logged inside the helper and
+    // never propagate to this response — Up may be unavailable but the local
+    // change has already succeeded above.
+    const upSyncItems: Array<{ upTransactionId: string | null; categoryId: string | null }> = [
+      { upTransactionId: transaction.up_transaction_id, categoryId: category_id },
+    ];
+    if (apply_to_merchant && category_id && bulkMerchantTxns.length > 0) {
+      for (const t of bulkMerchantTxns) {
+        upSyncItems.push({ upTransactionId: t.up_transaction_id, categoryId: category_id });
+      }
+    }
+    await pushCategoriesToUp(user.id, upSyncItems);
 
     // 5. Fetch updated transaction
     const { data: updatedTransaction } = await supabase
