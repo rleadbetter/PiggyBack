@@ -143,12 +143,35 @@ describe("resolveCategoryBatch precedence", () => {
     expect(resolveCategoryBatch(txn, ctx, null, "TRANSACTIONAL").categoryId).toBe("good-life");
   });
 
-  it("Tier 5 (round-up): inference fires when Up's category is null", () => {
+  it("Tier 5 (round-up): a Round Up *transaction* (transactionType=Round Up) is classified as round-up", () => {
+    // Up Bank fires a separate "Round Up" transaction with that exact
+    // transactionType to move the rounded cents to a Saver. THAT is what
+    // should be classified as round-up.
     const txn = baseTxn({
-      roundUp: { amount: { currencyCode: "AUD", value: "-0.50", valueInBaseUnits: -50 }, boostPortion: null },
+      transactionType: "Round Up",
+      amount: { currencyCode: "AUD", value: "0.50", valueInBaseUnits: 50 },
     });
     expect(resolveCategoryBatch(txn, emptyCtx(), null, "TRANSACTIONAL")).toEqual({
       categoryId: "round-up",
+      parentCategoryId: null,
+      appliedUserRuleId: null,
+      appliedDefaultRuleId: null,
+    });
+  });
+
+  it("Tier 5 (round-up): a parent purchase that *generated* a round-up is NOT classified as round-up", () => {
+    // The `roundUp` field on a parent purchase is metadata describing the
+    // round-up child it produced. The parent itself is a regular purchase
+    // (here, no Up category, no other classifier matches) and must fall
+    // through to null so it appears under Miscellaneous and counts as
+    // spending — NOT get hidden as "Round Up Savings".
+    const txn = baseTxn({
+      description: "Amazon",
+      transactionType: "Purchase",
+      roundUp: { amount: { currencyCode: "AUD", value: "-0.50", valueInBaseUnits: -50 }, boostPortion: null },
+    });
+    expect(resolveCategoryBatch(txn, emptyCtx(), null, "TRANSACTIONAL")).toEqual({
+      categoryId: null,
       parentCategoryId: null,
       appliedUserRuleId: null,
       appliedDefaultRuleId: null,

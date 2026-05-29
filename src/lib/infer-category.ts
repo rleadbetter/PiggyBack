@@ -64,8 +64,16 @@ export function inferCategoryId({
   // Internal transfer (between Up accounts)
   if (transferAccountId) return "internal-transfer";
 
-  // Round-ups (savings)
-  if (roundUpAmountCents != null && roundUpAmountCents !== 0) return "round-up";
+  // Round-ups (savings).
+  //
+  // Only classify as `round-up` when the transaction *is itself* a round-up
+  // (Up Bank sends a separate Round Up transaction with transactionType
+  // "Round Up" that transfers the rounded cents to a Saver).
+  //
+  // We must NOT classify on `roundUpAmountCents` alone — that field appears
+  // on the *parent purchase* as metadata describing the round-up child it
+  // produced. The parent is a regular purchase (Amazon, Kmart, the rego,
+  // etc.) and assigning it to "Round Up Savings" hides the actual spend.
   if (transactionType === "Round Up") return "round-up";
 
   // Salary
